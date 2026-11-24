@@ -48,12 +48,13 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import SecurityForm from './SecurityForm';
+import CategoryManager from './CategoryManager';
 import ThemePicker from './ThemePicker';
 import {
   type AppState,
   type WishItem,
   type WishList,
-  categories,
+  categories as defaultCategories,
   money,
   demoList,
   demoItems,
@@ -70,6 +71,7 @@ const emptyState: AppState = {
   user: null,
   lists: [],
   items: [],
+  categories: [],
   friends: [],
   offersEnabled: false,
   recoveryEnabled: false,
@@ -85,7 +87,8 @@ type ModalState = {
     | 'friend'
     | 'confirm'
     | 'reset'
-    | 'security';
+    | 'security'
+    | 'categories';
   item?: WishItem;
   list?: WishList;
   action?: () => Promise<void>;
@@ -140,7 +143,7 @@ function ProductImage({ item }: { item: WishItem }) {
   ) : (
     <div className="image-placeholder">
       <ShoppingBag size={52} strokeWidth={1} />
-      <span>{item.category}</span>
+      <span>{item.category || 'Sem categoria'}</span>
     </div>
   );
 }
@@ -196,7 +199,7 @@ export default function WishlistApp() {
     [activeList, setActiveList] = useState(''),
     [view, setView] = useState('wishlist');
   const [search, setSearch] = useState(''),
-    [category, setCategory] = useState('Todas'),
+    [category, setCategory] = useState<string | null>(null),
     [sort, setSort] = useState('recent'),
     [tab, setTab] = useState('all'),
     [layout, setLayout] = useState('grid');
@@ -218,6 +221,11 @@ export default function WishlistApp() {
     : (demo ? examples : state.items).filter(
         (i) => view === 'offers' || view === 'purchased' || i.wishlistId === currentList?.id,
       );
+  const categoryNames = demo ? defaultCategories : state.categories.map((c) => c.name);
+  // Shared views expose only categories actually used in that shared list.
+  const filterCategories = [
+    ...new Set(shared ? items.map((i) => i.category) : [...categoryNames, '']),
+  ];
   const reload = useCallback(async () => {
     const data = await api<AppState>('state');
     setState(data);
@@ -286,7 +294,7 @@ export default function WishlistApp() {
     setShareToken('');
     setSharedError('');
     setSearch('');
-    setCategory('Todas');
+    setCategory(null);
     setTab('all');
     if (id) setActiveList(id);
     setMobileNav(false);
@@ -300,7 +308,7 @@ export default function WishlistApp() {
           [i.name, i.notes, i.category].some((s) =>
             s.toLowerCase().includes(search.toLowerCase()),
           )) &&
-        (category === 'Todas' || i.category === category) &&
+        (category === null || i.category === category) &&
         (tab !== 'priority' || i.priority === 'Quero muito')
       );
     })
@@ -468,6 +476,17 @@ export default function WishlistApp() {
           </button>
         </div>
         <div className="sidebar-bottom">
+          {state.user && (
+            <button
+              className="category-menu"
+              onClick={() => {
+                setMobileNav(false);
+                setModal({ type: 'categories' });
+              }}
+            >
+              <Tag size={17} /> Gerenciar categorias
+            </button>
+          )}
           <ThemePicker />
           <div className="little-note">
             <div className="note-hearts">
@@ -897,13 +916,17 @@ export default function WishlistApp() {
                         <label className="filter-select">
                           <SlidersHorizontal size={15} />
                           <select
-                            value={category}
-                            onChange={(e) => setCategory(e.target.value)}
+                            value={category === null ? 'all' : 'category:' + category}
+                            onChange={(e) =>
+                              setCategory(e.target.value === 'all' ? null : e.target.value.slice(9))
+                            }
                             aria-label="Filtrar categoria"
                           >
-                            <option value="Todas">Categorias</option>
-                            {categories.map((c) => (
-                              <option key={c}>{c}</option>
+                            <option value="all">Todas as categorias</option>
+                            {filterCategories.map((c) => (
+                              <option key={c} value={'category:' + c}>
+                                {c || 'Sem categoria'}
+                              </option>
                             ))}
                           </select>
                           <ChevronDown size={13} />
@@ -913,7 +936,7 @@ export default function WishlistApp() {
                     <div className="results-toolbar">
                       <p>
                         {filtered.length} {filtered.length === 1 ? 'desejo' : 'desejos'}
-                        {category !== 'Todas' ? ' em ' + category : ''}
+                        {category !== null ? ' em ' + (category || 'Sem categoria') : ''}
                         <span> · cada um com uma história</span>
                       </p>
                       <div>
@@ -1020,7 +1043,7 @@ export default function WishlistApp() {
                             </div>
                             <div className="product-info">
                               <div className="product-meta">
-                                <span>{item.category}</span>
+                                <span>{item.category || 'Sem categoria'}</span>
                                 <span>·</span>
                                 <span>{domain(item.url)}</span>
                               </div>
@@ -1091,21 +1114,21 @@ export default function WishlistApp() {
                       <Empty
                         icon={view === 'purchased' ? <CheckCheck size={40} /> : <Heart size={40} />}
                         title={
-                          search || category !== 'Todas' || tab === 'priority'
+                          search || category !== null || tab === 'priority'
                             ? 'Nenhum desejo por aqui.'
                             : view === 'purchased'
                               ? 'Os sonhos realizados vão morar aqui.'
                               : 'Qual é o seu próximo desejo?'
                         }
                         text={
-                          search || category !== 'Todas' || tab === 'priority'
+                          search || category !== null || tab === 'priority'
                             ? 'Tente outra busca ou ajuste os filtros para encontrar seu desejo.'
                             : 'Pode ser aquele livro, uma viagem ou algo que você viu e amou. Guarde para não esquecer.'
                         }
                         action={
                           own &&
                           !search &&
-                          category === 'Todas' &&
+                          category === null &&
                           tab === 'all' &&
                           view !== 'purchased' ? (
                             <button
@@ -1160,29 +1183,31 @@ export default function WishlistApp() {
         <Modal
           key={modal.type + ':' + (modal.item?.id || modal.list?.id || '')}
           title={
-            modal.type === 'auth'
-              ? 'Seu cantinho começa aqui.'
-              : modal.type === 'reset'
-                ? 'Uma nova senha.'
-                : modal.type === 'item'
-                  ? modal.item
-                    ? 'Editar desejo'
-                    : 'Um novo desejo.'
-                  : modal.type === 'detail'
-                    ? 'Um desejo, muitos caminhos.'
-                    : modal.type === 'share'
-                      ? 'Compartilhe um pouquinho de você.'
-                      : modal.type === 'list'
-                        ? modal.list
-                          ? 'Editar lista'
-                          : 'Uma nova coleção de desejos.'
-                        : modal.type === 'security'
-                          ? 'Segurança da sua conta.'
-                          : modal.type === 'profile'
-                            ? 'Sua conta.'
-                            : modal.type === 'friend'
-                              ? 'Mais perto de quem você ama.'
-                              : modal.title || 'Tem certeza?'
+            modal.type === 'categories'
+              ? 'Suas categorias'
+              : modal.type === 'auth'
+                ? 'Seu cantinho começa aqui.'
+                : modal.type === 'reset'
+                  ? 'Uma nova senha.'
+                  : modal.type === 'item'
+                    ? modal.item
+                      ? 'Editar desejo'
+                      : 'Um novo desejo.'
+                    : modal.type === 'detail'
+                      ? 'Um desejo, muitos caminhos.'
+                      : modal.type === 'share'
+                        ? 'Compartilhe um pouquinho de você.'
+                        : modal.type === 'list'
+                          ? modal.list
+                            ? 'Editar lista'
+                            : 'Uma nova coleção de desejos.'
+                          : modal.type === 'security'
+                            ? 'Segurança da sua conta.'
+                            : modal.type === 'profile'
+                              ? 'Sua conta.'
+                              : modal.type === 'friend'
+                                ? 'Mais perto de quem você ama.'
+                                : modal.title || 'Tem certeza?'
           }
           onClose={() => setModal(null)}
           wide={modal.type === 'detail' || modal.type === 'item'}
@@ -1207,10 +1232,35 @@ export default function WishlistApp() {
               }}
             />
           )}
+          {modal.type === 'categories' && state.user && (
+            <CategoryManager
+              categories={state.categories}
+              items={state.items}
+              onChange={async (method, id, name) => {
+                const previous = state.categories.find((c) => c.id === id)?.name;
+                const result = await api<{ name?: string }>(
+                  'categories' + (id ? '/' + id : ''),
+                  method,
+                  method === 'DELETE' ? undefined : { name },
+                );
+                await refresh();
+                if (category !== null && category === previous)
+                  setCategory(method === 'DELETE' ? '' : (result.name ?? null));
+                notify(
+                  method === 'POST'
+                    ? 'Categoria criada.'
+                    : method === 'PATCH'
+                      ? 'Categoria renomeada.'
+                      : 'Categoria excluída. Seus desejos foram preservados.',
+                );
+              }}
+            />
+          )}
           {modal.type === 'item' && (
             <ItemForm
               item={modal.item}
               lists={lists}
+              categories={categoryNames}
               listId={currentList?.id}
               onSave={async (data) => {
                 if (demo) {
@@ -1625,11 +1675,13 @@ function ResetForm({ onSuccess, token }: { onSuccess: () => void; token: string 
 function ItemForm({
   item,
   lists,
+  categories,
   listId,
   onSave,
 }: {
   item?: WishItem;
   lists: WishList[];
+  categories: string[];
   listId?: string;
   onSave: (data: Omit<WishItem, 'id' | 'purchased' | 'createdAt'>) => Promise<void>;
 }) {
@@ -1717,7 +1769,12 @@ function ItemForm({
         </label>
         <label>
           Categoria
-          <select name="category" defaultValue={item?.category || 'Tecnologia'}>
+          <select
+            name="category"
+            aria-label="Categoria"
+            defaultValue={item?.category ?? categories[0] ?? ''}
+          >
+            <option value="">Sem categoria</option>
             {categories.map((c) => (
               <option key={c}>{c}</option>
             ))}
@@ -1816,7 +1873,7 @@ function ItemDetail({
         </div>
         <div>
           <span className="detail-category">
-            {item.category} · {item.priority}
+            {item.category || 'Sem categoria'} · {item.priority}
           </span>
           <h3>{item.name}</h3>
           <strong className="detail-price">{money(item.price)}</strong>

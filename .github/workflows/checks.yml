@@ -22,4 +22,5 @@ jobs:
       - run: node tests/security-regression.mjs
       - run: node tests/proxy-security.mjs
       - run: npm run build
-      - run: npm run test:integration
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e

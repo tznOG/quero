@@ -5,6 +5,13 @@ import { fetchOffers, searchLinks } from '../../../lib/offers';
 
 import { checkOrigin, json, readJson } from '../../../lib/http';
 import type { WishItem } from '../../../lib/types';
+import {
+  listCategories,
+  createCategory,
+  renameCategory,
+  deleteCategory,
+  categoryDatabaseError,
+} from '../../../lib/categories';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -117,6 +124,7 @@ async function handle(request: Request) {
           user: null,
           lists: [],
           items: [],
+          categories: [],
           friends: [],
           offersEnabled: !!env.SERPAPI_KEY,
           recoveryEnabled: !!env.RESEND_API_KEY && !!env.MAIL_FROM,
@@ -134,6 +142,7 @@ async function handle(request: Request) {
         user: p,
         lists: lists.map(listView),
         items: items.map(itemView),
+        categories: await listCategories(p.id),
         friends: friends.map((r) => ({
           id: r.id,
           name: r.name,
@@ -183,6 +192,18 @@ async function handle(request: Request) {
       });
     }
     const p = await requireUser(request);
+    if (path[0] === 'categories') {
+      if (path.length === 1 && method === 'GET') return json(await listCategories(p.id));
+      if (path.length === 1 && method === 'POST')
+        return json(await createCategory(p.id, payload.name), 201);
+      if (path.length === 2 && method === 'PATCH')
+        return json(await renameCategory(p.id, path[1], payload.name));
+      if (path.length === 2 && method === 'DELETE') {
+        await deleteCategory(p.id, path[1]);
+        return json({ ok: true });
+      }
+      throw new HttpError(404, 'Página não encontrada.');
+    }
     if (path.length === 1 && path[0] === 'profile' && method === 'PATCH') {
       const b = payload;
       await run('UPDATE profiles SET name=? WHERE id=?', textValue(b.name, 60), p.id);
@@ -421,6 +442,8 @@ async function handle(request: Request) {
     }
     throw new HttpError(404, 'Página não encontrada.');
   } catch (e) {
+    const categoryError = categoryDatabaseError(e);
+    if (categoryError) return json({ error: categoryError.message }, categoryError.status);
     if (e instanceof HttpError) return json({ error: e.message }, e.status);
     console.error('Wishlist API error', e instanceof Error ? e.name : 'unknown');
     return json({ error: 'Não foi possível concluir. Tente novamente em instantes.' }, 500);

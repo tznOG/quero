@@ -1,4 +1,5 @@
 import { sqliteTable, text, integer, index, uniqueIndex } from 'drizzle-orm/sqlite-core';
+import { sql } from 'drizzle-orm';
 export const profiles = sqliteTable(
   'profiles',
   {
@@ -60,6 +61,20 @@ export const wishlists = sqliteTable(
     createdAt: integer('created_at').notNull(),
   },
   (t) => [index('wishlists_owner').on(t.userId), uniqueIndex('wishlists_share').on(t.shareToken)],
+);
+export const categories = sqliteTable(
+  'categories',
+  {
+    id: text('id')
+      .primaryKey()
+      .default(sql`(lower(hex(randomblob(16))))`),
+    userId: text('user_id')
+      .notNull()
+      .references(() => profiles.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    nameKey: text('name_key').notNull(),
+  },
+  (t) => [uniqueIndex('categories_owner_name').on(t.userId, t.nameKey)],
 );
 export const items = sqliteTable(
   'items',
