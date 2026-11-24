@@ -22,10 +22,12 @@ export type WishList = {
   createdAt: number;
   owner?: string;
 };
+export type WishCategory = { id: string; name: string };
 export type AppState = {
   user: { id: string; name: string; email: string } | null;
   lists: WishList[];
   items: WishItem[];
+  categories: WishCategory[];
   friends: {
     id: string;
     name: string;

@@ -1,6 +1,76 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=DM+Serif+Display:ital@0;1&display=swap');
 @import 'tailwindcss';
 
+.category-menu {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 10px 8px;
+  text-align: left;
+  border-radius: 10px;
+}
+.category-menu:hover {
+  background: var(--paper);
+}
+.category-create,
+.category-edit {
+  display: grid;
+  gap: 12px;
+}
+.category-count {
+  margin: 10px 0 18px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.category-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.category-row {
+  border-top: 1px solid var(--theme-line, #e0e4d5);
+  padding: 14px 0;
+}
+.category-summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+.category-summary > div:first-child {
+  min-width: 0;
+}
+.category-summary strong {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.category-summary small {
+  display: block;
+  color: var(--muted);
+  margin-top: 4px;
+}
+.category-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.category-summary .category-actions {
+  flex-wrap: nowrap;
+}
+.category-confirm {
+  margin-top: 12px;
+}
+.category-confirm p {
+  margin-bottom: 12px;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.category-manager input {
+  width: 100%;
+  min-width: 0;
+}
+
 :root {
   color-scheme: light;
   --on-accent: #fff;

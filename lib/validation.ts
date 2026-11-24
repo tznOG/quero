@@ -34,15 +34,11 @@ export function cents(value: unknown, optional = false): number | null {
   return value;
 }
 export function validateItem(body: Record<string, unknown>) {
-  const category = textValue(body.category, 40),
+  const category = textValue(body.category, 40, false),
     priority = textValue(body.priority, 20);
-  if (
-    !['Tecnologia', 'Moda', 'Casa', 'Beleza', 'Livros', 'Experiências', 'Outros'].includes(
-      category,
-    ) ||
-    !['Quero muito', 'Quero', 'Um dia'].includes(priority)
-  )
-    throw new HttpError(400, 'Categoria ou prioridade inválida.');
+  // Category membership is enforced by SQLite against the list owner's categories.
+  if (!['Quero muito', 'Quero', 'Um dia'].includes(priority))
+    throw new HttpError(400, 'Prioridade inválida.');
   return {
     name: textValue(body.name, 160),
     url: safeUrl(body.url),

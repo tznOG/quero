@@ -9,6 +9,7 @@ Um lugar para organizar desejos e compartilhar ideias de presente. Cada pessoa p
 ## O que dá para fazer
 
 - Criar e editar listas e itens com nome, imagem, preço, categoria e link do produto.
+- Criar, renomear e excluir categorias próprias em **Gerenciar categorias**. Elas valem para todas as listas da conta; excluir uma categoria mantém os desejos como “Sem categoria”.
 - Organizar prioridades e acompanhar itens já adquiridos.
 - Compartilhar listas por link, trocar esse link ou desativar o acesso.
 - Reservar presentes e acompanhar listas de outras pessoas.

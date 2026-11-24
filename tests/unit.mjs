@@ -38,7 +38,17 @@ assert.equal(cents(null, true), null);
 for (const price of [-1, 1.1, NaN, Infinity, '1', 1000000001]) assert.throws(() => cents(price));
 assert.throws(() => textValue('   ', 20));
 assert.equal(textValue(' abc ', 5), 'abc');
-assert.throws(() => validateItem({ category: 'Fake', priority: 'Quero' }));
+const validItem = {
+  name: 'Example',
+  url: 'https://example.com',
+  price: 0,
+  category: 'Minha categoria',
+  priority: 'Quero',
+};
+assert.equal(validateItem(validItem).category, 'Minha categoria');
+assert.equal(validateItem({ ...validItem, category: '' }).category, '');
+assert.throws(() => validateItem({ ...validItem, category: 'x'.repeat(41) }));
+assert.throws(() => validateItem({ ...validItem, priority: 'Invalid' }));
 const request = (body, headers = {}) =>
   new Request('https://wishlist.test/api/items', {
     method: 'POST',
@@ -69,8 +79,8 @@ assert.throws(() => checkOrigin(request('{}', { origin: 'https://wishlist.test' 
 });
 delete process.env.APP_ORIGIN;
 process.env.APP_ORIGIN = 'https://quero.tznog.com';
-process.env.PRIVATE_ORIGINS = 'http://homelab.tail86b1f4.ts.net:3080';
-const privateRequest = (origin, host = 'homelab.tail86b1f4.ts.net:3080') =>
+process.env.PRIVATE_ORIGINS = 'http://private-origin.example.test:3080';
+const privateRequest = (origin, host = 'private-origin.example.test:3080') =>
   new Request('http://container:3000/api/items', { method: 'POST', headers: { host, origin } });
 assert.throws(() => checkOrigin(privateRequest(process.env.PRIVATE_ORIGINS)), { status: 403 });
 checkOrigin(privateRequest('https://quero.tznog.com'));

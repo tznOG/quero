@@ -104,7 +104,7 @@ test('celular: navegação, busca, filtros, diálogo e ausência de rolagem hori
   await page.getByLabel('Buscar um desejo').fill('câmera');
   await expect(page.locator('.product-card')).toHaveCount(1);
   await page.getByRole('button', { name: 'Limpar busca' }).click();
-  await page.getByLabel('Filtrar categoria').selectOption('Livros');
+  await page.getByLabel('Filtrar categoria').selectOption({ label: 'Livros' });
   await expect(page.locator('.product-card')).toHaveCount(1);
   await page.getByRole('button', { name: 'Mais um capítulo na estante', exact: true }).click();
   await expect(page.getByRole('dialog')).toBeVisible();

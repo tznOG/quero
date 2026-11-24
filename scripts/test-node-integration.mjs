@@ -46,6 +46,7 @@ try {
   }
   if (!ready) throw new Error('Server failed health check');
   await run(['tests/integration.mjs']);
+  await run(['tests/categories-integration.mjs']);
   if (process.argv.includes('--browser'))
     await run([resolve('node_modules/@playwright/test/cli.js'), 'test']);
 } finally {
