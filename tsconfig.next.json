@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.json",
+  "include": [
+    "next-env.d.ts", "app/**/*.ts", "app/**/*.tsx", "proxy.ts", "next.config.ts",
+    "lib/auth.ts", "lib/http.ts", "lib/offers.ts", "lib/public-origin.ts",
+    "lib/sqlite.ts", "lib/types.ts", "lib/validation.ts", "db/schema.ts",
+    ".next/types/**/*.ts", ".next/dev/types/**/*.ts"
+  ]
+}

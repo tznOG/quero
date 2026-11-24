@@ -1,0 +1,35 @@
+import assert from 'node:assert/strict';
+import { readFileSync, writeFileSync, unlinkSync } from 'node:fs';
+import { pathToFileURL } from 'node:url';
+import { resolve } from 'node:path';
+import ts from 'typescript';
+import { NextRequest } from 'next/server.js';
+const file=resolve('.security-proxy-test.mjs');
+const compiled=ts.transpileModule(readFileSync('proxy.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText.replace("'next/server'","'next/server.js'");
+writeFileSync(file,compiled);
+try {
+ const {proxy}=await import(pathToFileURL(file).href);
+ process.env.NODE_ENV='production';
+ const request=()=>new NextRequest('https://quero.tznog.com/',{headers:{'x-nonce':'attacker-chosen','content-security-policy':"script-src 'unsafe-inline'"}});
+ const a=proxy(request()),b=proxy(request());
+ const csp=a.headers.get('content-security-policy');
+ const nonce=csp.match(/'nonce-([^']+)'/)[1];
+ assert.notEqual(nonce,'attacker-chosen');
+ assert.notEqual(csp,b.headers.get('content-security-policy'));
+ assert.equal(a.headers.get('x-middleware-request-x-nonce'),nonce);
+ assert.equal(a.headers.get('x-middleware-request-content-security-policy'),csp);
+ assert.equal(a.headers.get('cache-control'),'no-store');
+ const script=csp.split(';').find(x=>x.includes('script-src'));
+ assert.ok(script.includes("'strict-dynamic'"));
+ assert.ok(!script.includes('unsafe-inline')&&!script.includes('unsafe-eval'));
+ console.log('PASS: unpredictable per-response CSP nonce replaces client values and reaches Next renderer; production scripts disallow unsafe-inline/eval');
+ process.env.ENFORCE_HTTPS='true';process.env.APP_ORIGIN='https://quero.tznog.com';delete process.env.ORIGIN_PROXY_ONLY;
+ const spoofed=proxy(new NextRequest('http://origin/?lista=synthetic',{headers:{host:'quero.tznog.com','x-forwarded-proto':'https'}}));
+ assert.equal(spoofed.status,308);assert.equal(spoofed.headers.get('location'),'https://quero.tznog.com/?lista=synthetic');
+ process.env.ORIGIN_PROXY_ONLY='true';
+ const accepted=proxy(new NextRequest('http://origin/',{headers:{host:'quero.tznog.com','x-forwarded-proto':'https'}}));
+ assert.equal(accepted.status,200);
+ const rejected=proxy(new NextRequest('http://origin/api/auth/login',{method:'POST',headers:{host:'quero.tznog.com','x-forwarded-proto':'http'}}));
+ assert.equal(rejected.status,400);
+ console.log('PASS: HTTPS redirect preserves query, forwarded protocol requires isolated-origin setting, insecure mutation rejected before auth');
+} finally {unlinkSync(file);}

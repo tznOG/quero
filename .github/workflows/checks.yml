@@ -1,0 +1,25 @@
+name: Verificações
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  application:
+    runs-on: ubuntu-latest
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+      SERPAPI_KEY: ''
+      RESEND_API_KEY: ''
+      MAIL_FROM: ''
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm run typecheck
+      - run: npm test
+      - run: node tests/security-regression.mjs
+      - run: node tests/proxy-security.mjs
+      - run: npm run build
+      - run: npm run test:integration
